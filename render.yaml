@@ -1,0 +1,50 @@
+services:
+  # 1. The Flask Web App
+  - type: web
+    name: emp-web
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    envVars:
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: emp-redis
+          property: connectionString
+      - key: REDIS_CACHE_URL
+        fromService:
+          type: redis
+          name: emp-redis
+          property: connectionString
+
+  # 2. The Celery Worker
+  - type: worker
+    name: emp-celery-worker
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A app.celery worker -l info"
+    envVars:
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: emp-redis
+          property: connectionString
+
+  # 3. The Celery Beat Scheduler
+  - type: worker
+    name: emp-celery-beat
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A app.celery beat -l info"
+    envVars:
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: emp-redis
+          property: connectionString
+
+  # 4. The Managed Redis Instance
+  - type: redis
+    name: emp-redis
+    ipAllowList: [] # Keeps Redis internal and secure
+    plan: free
